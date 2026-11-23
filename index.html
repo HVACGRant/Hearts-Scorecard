@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hearts Scoreboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Figtree:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: friendly game-night tool, quick to use at the table with one thumb
+   IDEA: a score pad lying on a green felt card table
+   PICTURE: the live standings + hand entry pad are the picture
+   COLOUR and TYPE: felt green ground, card-white panels, heart red accent, spade black; DM Serif Display + Figtree
+   LAYOUT: one column: title, standings, this hand, history, settings */
+:root{color-scheme:light dark;
+--felt:light-dark(#0f5a3c,#0a2a1e);--felt2:light-dark(#0c4a31,#071f16);
+--card:light-dark(#fffdf8,#15211b);--ink:light-dark(#1b1a17,#eef2ee);--soft:light-dark(#6b6a63,#9fb1a7);
+--line:light-dark(#e6e1d6,#26362e);--red:light-dark(#c8202f,#ff5a66);--chip:light-dark(#f3efe5,#1d2c24);
+--on:#fff}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:radial-gradient(120% 80% at 50% 0%,var(--felt),var(--felt2));background-attachment:fixed;color:var(--ink);font:16px/1.5 Figtree,system-ui,sans-serif;overflow-x:clip;min-height:100vh}
+.wrap{max-width:760px;margin:0 auto;padding:20px max(4vw,12px) 48px}
+header{color:#fff;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 4px 16px}
+h1{font:400 clamp(34px,7vw,48px)/1.05 "DM Serif Display",serif;margin:0}
+h1 span{color:#ff7a84}
+#status{font-weight:600;background:rgba(0,0,0,.22);padding:8px 14px;border-radius:999px;font-size:15px;white-space:nowrap}
+.panel{background:var(--card);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 10px 30px rgba(0,0,0,.25)}
+h2{font:400 26px/1.1 "DM Serif Display",serif;margin:0 0 12px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+h2 small{font:600 14px Figtree,sans-serif;color:var(--soft)}
+ol{list-style:none;margin:0;padding:0}
+.st{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.st:first-child{border-top:0}
+.rk{font-weight:800;color:var(--soft);text-align:center}
+.st.lead .rk{color:var(--red);font-size:20px}
+.nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tot{font:400 28px/1 "DM Serif Display",serif;text-align:right;font-variant-numeric:tabular-nums}
+.dl{font-size:13px;color:var(--soft);text-align:right;grid-column:3}
+.bar{grid-column:2;height:6px;border-radius:6px;background:var(--chip);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--red);border-radius:6px;transition:width .4s}
+.over{background:var(--red);color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.over b{font:400 22px/1.2 "DM Serif Display",serif}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.step{display:flex;align-items:center;background:var(--chip);border-radius:12px}
+.step b{width:34px;text-align:center;font-size:20px;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer;border:0;border-radius:12px;min-height:44px;min-width:44px;background:var(--chip)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #4aa3ff;outline-offset:2px}
+button:disabled{opacity:.35;cursor:default}
+.step button{background:none;font-size:24px;font-weight:600;color:var(--red)}
+.q{padding:0 12px;font-weight:800;border:2px solid var(--line);background:none;white-space:nowrap}
+.q[aria-pressed=true]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.pts{font-size:13px;color:var(--soft);display:block;font-weight:400}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:2px solid var(--line)}
+#msg{font-weight:600;color:var(--soft)}
+#msg.ok{color:var(--red)}
+.go{background:var(--red);color:#fff;font-weight:800;padding:0 22px}
+.ghost{background:var(--chip);padding:0 16px;font-weight:600}
+.light{background:#fff;color:var(--red);font-weight:800;padding:0 16px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:13px;color:var(--soft);font-weight:600;max-width:90px;overflow:hidden;text-overflow:ellipsis}
+th:first-child,td:first-child{text-align:left;color:var(--soft)}
+tfoot td{font-weight:800;border:0;color:var(--ink)!important}
+td.m{color:var(--red);font-weight:800}
+.empty{color:var(--soft);margin:4px 0}
+label{display:block;font-size:14px;font-weight:600;color:var(--soft);margin:10px 0 4px}
+input,select{font:inherit;font-size:16px;width:100%;min-height:44px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--chip);color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.note{font-size:14px;color:var(--soft);margin:12px 0 0}
+#cnote{background:var(--chip);border-radius:12px;padding:12px;margin-top:10px}
+summary{cursor:pointer;font:400 22px/1.2 "DM Serif Display",serif;min-height:44px;display:flex;align-items:center}
+@media(max-width:600px){.grid{grid-template-columns:minmax(0,1fr)}.panel{padding:14px}}
+@media(prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Hearts <span>♥</span></h1>
+    <div id="status"></div>
+  </header>
+
+  <section class="panel">
+    <h2>Standings <small id="tgtl"></small></h2>
+    <div id="over"></div>
+    <ol id="stand"></ol>
+  </section>
+
+  <section class="panel" id="entry">
+    <h2><span id="hn">Hand 1</span> <small>Tap + for each heart taken</small></h2>
+    <div id="rows"></div>
+    <div class="foot">
+      <span id="msg"></span>
+      <button class="go" id="rec" disabled>Record hand</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Hand history <button class="ghost" id="undo">Undo last</button></h2>
+    <div id="hist"></div>
+  </section>
+
+  <section class="panel">
+    <details id="set">
+      <summary>Players &amp; settings</summary>
+      <div class="grid">
+        <div><label for="n">Players</label>
+          <select id="n"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
+        <div><label for="tgt">Game ends at</label><input id="tgt" type="number" inputmode="numeric" min="10" step="5"></div>
+      </div>
+      <div id="cnote" hidden></div>
+      <div class="grid" id="names"></div>
+      <p class="note" id="deck"></p>
+      <div class="foot"><span class="note" style="margin:0">Names change instantly. Scores stay.</span>
+        <button class="ghost" id="newg">New game, same players</button></div>
+    </details>
+  </section>
+</div>
+
+<script>
+{
+const K='hearts-scoreboard-v1';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const DECK={3:['2♦',17],4:['nothing',13],5:['2♦ and 2♠',10],6:['2♦, 3♦, 2♠ and 3♠',8],7:['2♦, 3♦ and 2♠',7],8:['2♦, 3♦, 2♠ and 3♠',6]};
+function load(){try{const s=JSON.parse(localStorage.getItem(K));if(s&&Array.isArray(s.players))return s}catch(e){}return null}
+function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+let S=load()||{players:['Player 1','Player 2','Player 3','Player 4'],target:100,hands:[]};
+const fresh=()=>({h:S.players.map(()=>0),q:-1});
+let E=fresh(),pendingN=0,armed=null;
+
+const totals=()=>{const t=S.players.map(()=>0);S.hands.forEach(h=>h.pts.forEach((p,i)=>t[i]+=p));return t};
+const isOver=()=>totals().some(v=>v>=S.target);
+function passDir(n){const c=S.players.length===4?['Pass left','Pass right','Pass across','No pass']:['Pass left','Pass right','No pass'];return c[n%c.length]}
+function score(e){const moon=e.h.findIndex((v,i)=>v===13&&e.q===i);
+  return{moon,pts:e.h.map((v,i)=>moon>=0?(i===moon?0:26):v+(e.q===i?13:0))}}
+
+function renderTop(){const n=S.hands.length;
+  $('status').textContent=isOver()?'Game over':'Hand '+(n+1)+' · '+passDir(n);
+  $('tgtl').textContent='Lowest wins · ends at '+S.target}
+
+function renderStand(){const t=totals(),last=S.hands[S.hands.length-1];
+  const ord=t.map((v,i)=>i).sort((a,b)=>t[a]-t[b]);const min=Math.min(...t);
+  $('stand').innerHTML=ord.map(i=>{const lead=t[i]===min&&S.hands.length>0;
+    const rank=ord.filter(j=>t[j]<t[i]).length+1;
+    return `<li class="st${lead?' lead':''}"><span class="rk">${lead?'♥':rank}</span><span class="nm">${esc(S.players[i])}</span><span class="tot">${t[i]}</span>
+      <span></span><span class="bar"><i style="width:${Math.min(100,t[i]/S.target*100)}%"></i></span><span class="dl">${last?(last.pts[i]?'+'+last.pts[i]:'+0')+' last':''}</span></li>`}).join('');
+  if(isOver()){const w=S.players.filter((p,i)=>t[i]===min).map(esc).join(' & ');
+    $('over').innerHTML=`<div class="over"><b>${w} win${w.includes('&amp;')?'':'s'} with ${min}!</b><button class="light" data-a="rematch">Rematch</button></div>`}
+  else $('over').innerHTML=''}
+
+function renderEntry(){const sum=E.h.reduce((a,b)=>a+b,0),left=13-sum,over=isOver();
+  $('hn').textContent='Hand '+(S.hands.length+1);
+  const sc=score(E);
+  $('rows').innerHTML=S.players.map((p,i)=>`<div class="row"><span class="nm">${esc(p)}<span class="pts">${sum===13&&E.q>=0?sc.pts[i]+' pts':(E.h[i]+(E.q===i?13:0))+' pts so far'}</span></span>
+    <span class="step"><button data-a="m" data-i="${i}" aria-label="Remove a heart from ${esc(p)}" ${E.h[i]&&!over?'':'disabled'}>−</button><b>${E.h[i]}</b><button data-a="p" data-i="${i}" aria-label="Add a heart to ${esc(p)}" ${left&&!over?'':'disabled'}>+</button></span>
+    <button class="q" data-a="q" data-i="${i}" aria-pressed="${E.q===i}" aria-label="${esc(p)} took the queen of spades" ${over?'disabled':''}>Q♠</button></div>`).join('');
+  const m=$('msg');m.className='';
+  if(over)m.textContent='Game over. Tap Rematch to play again.';
+  else if(left)m.textContent=left+' heart'+(left>1?'s':'')+' left to assign';
+  else if(E.q<0)m.textContent='Who took the Q♠?';
+  else if(sc.moon>=0){m.textContent=S.players[sc.moon]+' shot the moon! Everyone else takes 26.';m.className='ok'}
+  else{m.textContent='Ready to record';m.className='ok'}
+  $('rec').disabled=over||left!==0||E.q<0}
+
+function renderHist(){const n=S.hands.length;$('undo').disabled=!n;
+  if(!n){$('hist').innerHTML='<p class="empty">No hands yet. Scores show up here after each hand.</p>';return}
+  const t=totals();
+  $('hist').innerHTML=`<div class="scroll"><table><thead><tr><th>#</th>${S.players.map(p=>`<th title="${esc(p)}">${esc(p)}</th>`).join('')}</tr></thead>
+    <tbody>${S.hands.map((h,k)=>`<tr><td>${k+1}</td>${h.pts.map((v,i)=>`<td class="${h.moon===i?'m':''}">${h.moon===i?'☾ 0':v}</td>`).join('')}</tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total</td>${t.map(v=>`<td>${v}</td>`).join('')}</tr></tfoot></table></div><p class="note">☾ marks a moon shot.</p>`}
+
+function renderSet(){const n=S.players.length;$('n').value=n;$('tgt').value=S.target;
+  $('names').innerHTML=S.players.map((p,i)=>`<div><label for="nm${i}">Player ${i+1}</label><input id="nm${i}" data-i="${i}" value="${esc(p)}" maxlength="20" autocomplete="off"></div>`).join('');
+  const d=DECK[n];$('deck').textContent=n===4?'4 players: full deck, 13 cards each, 2♣ leads first.':`${n} players: take out ${d[0]} so everyone gets ${d[1]} cards. 2♣ still leads first. All 13 hearts and the Q♠ stay in, so a hand is always 26 points.`}
+
+function render(){renderTop();renderStand();renderEntry();renderHist()}
+function applyCount(v){const names=S.players.slice(0,v);while(names.length<v)names.push('Player '+(names.length+1));
+  S={players:names,target:S.target,hands:[]};E=fresh();pendingN=0;$('cnote').hidden=true;save();render();renderSet()}
+
+document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,i=+b.dataset.i;
+  if(a==='p'){E.h[i]++;renderEntry()}
+  else if(a==='m'){E.h[i]--;renderEntry()}
+  else if(a==='q'){E.q=E.q===i?-1:i;renderEntry()}
+  else if(a==='rematch'){S.hands=[];E=fresh();save();render()}
+  else if(a==='cyes')applyCount(pendingN)
+  else if(a==='cno'){pendingN=0;$('cnote').hidden=true;$('n').value=S.players.length}});
+
+$('rec').addEventListener('click',()=>{const sc=score(E);S.hands.push({h:E.h.slice(),q:E.q,pts:sc.pts,moon:sc.moon});E=fresh();save();render()});
+$('undo').addEventListener('click',()=>{const h=S.hands.pop();if(!h)return;E={h:h.h.slice(),q:h.q};save();render()});
+$('n').addEventListener('change',e=>{const v=+e.target.value;if(v===S.players.length)return;
+  if(!S.hands.length){applyCount(v);return}
+  pendingN=v;const c=$('cnote');c.hidden=false;
+  c.innerHTML=`Switching to ${v} players clears the ${S.hands.length} hand${S.hands.length>1?'s':''} played so far.<div class="foot" style="border:0;padding:0"><button class="ghost" data-a="cno">Keep playing</button><button class="go" data-a="cyes">Clear and switch</button></div>`});
+$('tgt').addEventListener('change',e=>{S.target=Math.max(10,Math.round(+e.target.value)||100);e.target.value=S.target;save();render()});
+$('names').addEventListener('input',e=>{const i=+e.target.dataset.i;S.players[i]=e.target.value.trim()||('Player '+(i+1));save();render()});
+$('newg').addEventListener('click',e=>{const b=e.currentTarget;
+  if(!S.hands.length){return}
+  if(armed){clearTimeout(armed);armed=null;b.textContent='New game, same players';S.hands=[];E=fresh();save();render();return}
+  b.textContent='Tap again to clear scores';armed=setTimeout(()=>{armed=null;b.textContent='New game, same players'},3000)});
+
+if(!load())$('set').open=true;
+render();renderSet();
+}
+</script>
+</body>
+</html>
